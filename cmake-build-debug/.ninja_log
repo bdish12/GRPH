@@ -1,0 +1,6 @@
+# ninja log v5
+2	707	1668714355793825171	CMakeFiles/grph.dir/main.cpp.o	2412a9db0d2115cb
+875	962	1668714356054394312	grph	6a26f572a98394de
+2	875	1668714355962713195	CMakeFiles/grph.dir/grph/graph/random/UndirectedRandomGraph.cpp.o	1b07344a0c7998dd
+2	49	1668069406143585124	CMakeFiles/grph.dir/grph/graph/common/AdjacencyList.cpp.o	bd00b3338ab07a5d
+0	178	1671543748531767565	build.ninja	566800b526fb150a
