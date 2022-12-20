@@ -30,3 +30,15 @@
 *.exe
 *.out
 *.app
+
+### CLion ###
+# Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
+
+# CMake
+cmake-build-*/
+
+#.idea
+/.idea/
+
+#IDK
+*.DS_Store
