@@ -35,10 +35,18 @@
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
 
 # CMake
-cmake-build-*/
+cmake-build-*/*
 
 #.idea
 /.idea/
 
 #IDK
 *.DS_Store
+/cmake-build-debug/
+/cmake_install.cmake
+/CMakeCache.txt
+/CMakeUserPresets.json
+/GRPH_LIB
+/Makefile
+/CMakeFiles/
+/.clang-tidy

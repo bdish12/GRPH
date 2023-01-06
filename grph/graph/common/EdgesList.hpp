@@ -11,20 +11,12 @@ namespace grph::graph {
 
     template<typename MetaInfoType = random::empty>
     struct EdgeNode {
-        Vertex from{}, to{};
+        int from, to;
         MetaInfoType metaInfo;
 
-        EdgeNode(const Edge &edge, const MetaInfoType &metaInfo) {
-            this->from = edge.from;
-            this->to = edge.to;
-            this->metaInfo = metaInfo;
-        };
+        EdgeNode(const Edge &edge, const MetaInfoType &metaInfo) : from(edge.from), to(edge.to), metaInfo(metaInfo) {};
 
-        EdgeNode(Vertex from, Vertex to, const MetaInfoType &metaInfo) {
-            this->from = from;
-            this->to = to;
-            this->metaInfo = metaInfo;
-        }
+        EdgeNode(int from, int to, const MetaInfoType &metaInfo) : from(from), to(to), metaInfo(metaInfo) {};
     };
 
     template<typename VertexesRatioType = bool>
@@ -35,29 +27,32 @@ namespace grph::graph {
 
             for (int lineIndex = 0; lineIndex < adjacencyMatrix.getDimension(); ++lineIndex) {
                 for (int columnIndex = 0; columnIndex < adjacencyMatrix.getDimension(); ++columnIndex) {
-                    if (adjacencyMatrix(lineIndex, columnIndex) != 0) {
+                    if (adjacencyMatrix.isConnected(lineIndex, columnIndex)) {
                         Edge edge(lineIndex, columnIndex);
-                        edges.push_back(EdgeNode(edge, adjacencyMatrix(lineIndex, columnIndex)));
+                        edges.push_back(EdgeNode(edge, adjacencyMatrix.at(lineIndex, columnIndex)));
                     }
                 }
             }
         }
 
-        void renumberVertexes(const std::map<Vertex, Vertex> &mapping) {
-            for (auto &edge : edges) {
+        void renumberVertexes(const std::map<int, int> &mapping) {
+            // TODO: add OpenMP
+            for (auto &edge: edges) {
                 edge.from = mapping.contains(edge.from)
-                        ? mapping.at(edge.from)
-                        : edge.from;
+                            ? mapping.at(edge.from)
+                            : edge.from;
                 edge.to = mapping.contains(edge.to)
-                        ? mapping.at(edge.to)
-                        : edge.to;
+                          ? mapping.at(edge.to)
+                          : edge.to;
             }
         }
 
         AdjacencyMatrix<VertexesRatioType> toAdjacencyMatrix() const {
             AdjacencyMatrix<VertexesRatioType> adjacencyMatrix(this->numVertexes);
-            for (auto &edge : edges) {
-                adjacencyMatrix(edge.from, edge.to) = sizeof(edge.metaInfo) == 0 ? 1 : edge.metaInfo; // TODO: пересмотреть
+            // TODO: add OpenMP
+            for (auto &edge: edges) {
+                // TODO: пересмотреть
+                adjacencyMatrix.setAt(edge.metaInfo, edge.from.num, edge.to.num);
             }
             return adjacencyMatrix;
         }

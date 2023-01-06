@@ -1,155 +1,94 @@
-#ifndef GRPH_UNDIRECTEDRANDOMGRAPH_H
-#define GRPH_UNDIRECTEDRANDOMGRAPH_H
+#ifndef GRPH_UNDIRECTEDRANDOMGRAPH_HPP
+#define GRPH_UNDIRECTEDRANDOMGRAPH_HPP
 
 #include <vector>
+#include <set>
+#include <list>
+#include <memory>
 
 #include "../common/AdjacencyMatrix.hpp"
-#include "../common/EdgesList.hpp"
-#include "../common/types.hpp"
 #include "../../exceptions/graph/exceptions.h"
+#include "../common/DegreesVector.hpp"
+
+#define NOT_FOUND (-1)
+#define TRIVIAL_CHAIN_LENGTH 3
 
 namespace grph::graph::random {
 
+    template<typename VertexesRatioType = EdgeProbability>
     class UndirectedRandomGraph {
     public:
-        explicit UndirectedRandomGraph(const AdjacencyMatrix<EdgeProbability> &adjacencyMatrix)
-            : adjacencyMatrix(adjacencyMatrix) {};
+        explicit UndirectedRandomGraph(const std::shared_ptr<AdjacencyMatrix<VertexesRatioType>> &adjacencyMatrix)
+                : adjacencyMatrix(adjacencyMatrix), degreesVector(adjacencyMatrix) {
+        };
 
-        static UndirectedRandomGraph &&readFromFile(const std::string &fileName);
-
-        static double calculateConnectivityProbability(const UndirectedRandomGraph &undirectedRandomGraph) {
-            auto graph = undirectedRandomGraph; // TODO перегрузить оператор =
-            return 0;
+        int getNumVertexes() const {
+            return adjacencyMatrix->getDimension();
         }
 
-    private:
-        const std::vector<Vertex> findResolvingChain() {
-
+        int getVertexDegree(int vertexNum) const {
+            return degreesVector.getVertexDegree(vertexNum);
         }
 
-        std::vector<AdjacencyMatrix<EdgeProbability>> isConnected() {
-            std::vector<AdjacencyMatrix<EdgeProbability>> res;
-            return res;
-        } // TODO: возвращать компоненты связности, использовать метод из BGL
+        const DegreesVector& getDegreesVector() const {
+            return degreesVector;
+        }
 
-        void renumberPairOfVertices(int firstVertexNum, int secondVertexNum) {
-            adjacencyMatrix.swapLines(firstVertexNum, secondVertexNum);
+        const AdjacencyMatrix<VertexesRatioType>& getAdjacencyMatrix() const {
+            return *adjacencyMatrix;
+        }
 
-            for (int lineIdx = 0; lineIdx < adjacencyMatrix.getDimension(); ++lineIdx) {
-                std::swap(adjacencyMatrix(lineIdx, firstVertexNum),
-                          adjacencyMatrix(lineIdx, secondVertexNum));
+        VertexesRatioType at(int firstVertexNum, int secondVertexNum) const {
+            return adjacencyMatrix->at(firstVertexNum, secondVertexNum);
+        }
+
+        bool containsHangingVertex() const {
+            return degreesVector.containsHangingVertex();
+        }
+
+        VertexesRatioType removeHangingVertexWithLowestIndex() {
+            auto hangingVertexWithLowestIndex = degreesVector.getHangingVertexWithLowestIndex();
+            auto removedEdgeWithRatio = adjacencyMatrix->removeHangingVertex(hangingVertexWithLowestIndex);
+            degreesVector.removeHangingVertex(removedEdgeWithRatio.first.to);
+            return removedEdgeWithRatio.second;
+        }
+
+        int findFirstVertexThatDegreeEqualTwo() const {
+            return degreesVector.findFirstVertexThatDegreeEqualTwo();
+        }
+
+        bool containsChain() const {
+            return degreesVector.findFirstVertexThatDegreeEqualTwo() != NOT_FOUND;
+        }
+
+        double removeChain(const std::list<int> &chain) { // возвращает ФАКТОР
+            if (chain.size() < TRIVIAL_CHAIN_LENGTH) {
+                throw std::runtime_error("invalid chain");
             }
-            // TODO: добавить обновление вектора степеней?
-        }
-
-        void renumberVertexes(const std::map<Vertex, Vertex> &mapping) {
-            EdgesList<EdgeProbability> edgesList(this->adjacencyMatrix);
-            edgesList.renumberVertexes(mapping);
-            this->adjacencyMatrix = edgesList.toAdjacencyMatrix();
-        }
-
-        void edgeContraction(const Edge &edge) {
-            if (isNotValidEdge(edge)) {
-                std::stringstream ss;
-                ss << "Invalid edge: " << edge.toString() << " for graph with curDimension: "
-                   << curNumVertexes();
-                throw exceptions::invalid_edge(ss.str());
+            if (chain.size() == TRIVIAL_CHAIN_LENGTH) {
+                return removeTrivialChain(chain);
             }
 
-            auto updatedEdge = moveEdgeTailToVertexesEnd(edge);
-            auto remainingVertex = updatedEdge.from;
-            auto vertexToRemove = updatedEdge.to;
-
-            adjacencyMatrix(remainingVertex, vertexToRemove) = 0;
-            // TODO: добавить OpenMP
-            for (int lineIndex = 0; lineIndex < curNumVertexes(); ++lineIndex) {
-                if (lineIndex != remainingVertex) {
-                    adjacencyMatrix(lineIndex, remainingVertex) = 1 -
-                            (1 - (adjacencyMatrix(remainingVertex, lineIndex))
-                            * (1 - adjacencyMatrix(vertexToRemove, lineIndex)));
-
-                    adjacencyMatrix(remainingVertex, lineIndex) = adjacencyMatrix(lineIndex, remainingVertex);
-                }
-            }
-            removeLastVertex();
-        }
-
-        inline bool isNotValidEdge(const Edge &edge) {
-            bool invalidFormat = edge.from < 0 || edge.to < 0
-                    || edge.from > curNumVertexes() || edge.to > curNumVertexes();
-            bool verticesNotConnected = adjacencyMatrix(edge.from, edge.to) == 0;
-            return invalidFormat || verticesNotConnected;
-        }
-
-        // возвращает ребро, to часть которого становится вершиной с наибольшим номером в графе
-        Edge moveEdgeTailToVertexesEnd(const Edge &edge) {
-            if (edge.from == curNumVertexes() - 1) {
-                return {edge.to, edge.from};
-            } else if (edge.to == curNumVertexes() - 1) {
-                return edge;
+            if (chain.front() == chain.back()) { // прикрепленный цикл
+                return 0; // TODO накапливание суммы при поиске цепи
             } else {
-                renumberPairOfVertices(edge.to, curNumVertexes() - 1);
-                return {edge.from, curNumVertexes() - 1};
+                return 0; // то же самое, что и сверху
             }
         }
 
-        inline void removeLastVertex() {
-            auto lastVertex = curNumVertexes() - 1;
-            if (lastVertex == -1) {
-                return;
+        double removeTrivialChain(const std::list<int> &trivialChain) {
+            if (trivialChain.front() == trivialChain.back()) {
+                throw std::runtime_error("invalid trivial chain: parallel edges");
             }
 
-            for (int lineIndex = 0; lineIndex < curNumVertexes(); ++lineIndex) {
-                adjacencyMatrix(lineIndex, lastVertex) = 0;
-            }
-            adjacencyMatrix.decrementDimension();
-            verticesDegrees.pop_back();
-        }
-
-        inline void removeVertex(Vertex vertexToRemove) {
-            if (curNumVertexes() < 2) {
-                return;
-            }
-
-            if (vertexToRemove != curNumVertexes() - 1) {
-                renumberPairOfVertices(vertexToRemove, curNumVertexes() - 1);
-            }
-            removeLastVertex();
-        }
-
-        inline int curNumVertexes() const {
-            return adjacencyMatrix.getDimension();
-        }
-
-        int calcVertexDegree(Vertex vertex) {
-            int degree = 0;
-            for (int columnIndex = 0; columnIndex < curNumVertexes(); ++columnIndex) {
-                if (adjacencyMatrix(vertex, columnIndex) != 0) {
-                    degree++;
-                }
-            }
-            return degree;
-        }
-
-        void updateVerticesDegrees() {
-            verticesDegrees.clear();
-            for (int lineIdx = 0; lineIdx < curNumVertexes(); ++lineIdx) {
-                int curVertexDegree = 0;
-                for (int columnIdx = 0; columnIdx < curNumVertexes(); ++columnIdx) {
-                    if (adjacencyMatrix(lineIdx, columnIdx) != 0) {
-                        curVertexDegree++;
-                    }
-                }
-                verticesDegrees.push_back(curVertexDegree);
-            }
-            std::sort(verticesDegrees.begin(), verticesDegrees.end());
         }
 
     private:
-        AdjacencyMatrix<EdgeProbability> adjacencyMatrix;
-        std::vector<int> verticesDegrees; // храним всегда отсортированным // не отображается в вершины
+        std::shared_ptr<AdjacencyMatrix<VertexesRatioType>> adjacencyMatrix;
+        DegreesVector degreesVector;
     };
 
 }
 
-#endif //GRPH_UNDIRECTEDRANDOMGRAPH_H
+
+#endif //GRPH_UNDIRECTEDRANDOMGRAPH_HPP

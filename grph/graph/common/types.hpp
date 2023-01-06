@@ -5,10 +5,8 @@
 
 namespace grph::graph {
 
-    typedef int Vertex;
-
     struct Edge {
-        Vertex from, to;
+        int from, to;
 
         Edge(int from, int to) : from(from), to(to) {};
 
@@ -21,7 +19,8 @@ namespace grph::graph {
 
     namespace random {
 
-        struct empty {};
+        struct empty {
+        };
 
         typedef double EdgeProbability;
 

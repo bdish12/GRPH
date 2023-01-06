@@ -1,8 +1,13 @@
 #include <iostream>
+#include <fstream>
 
 #include "grph/graph/common/AdjacencyMatrix.hpp"
+#include "grph/utils/parse/TGFParser.hpp"
+#include "grph/graph/random/RandomGraphUtils.hpp"
 
 int main() {
-    grph::graph::AdjacencyMatrix<int> matrix(12);
-    std::cout << matrix(1, 1);
+    std::ifstream ifs("not_connected.tgf");
+    auto matrix = grph::utils::TGFParser::parseFile(ifs);
+
+    std::cout << grph::graph::random::RandomGraphUtils::calculateATR(matrix);
 }
